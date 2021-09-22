@@ -79,8 +79,11 @@ class InvertedIndex(SqliteDict):
         Returns:
             List of postings for the given term in the given field.
         """
-        # TODO
-        ...
+        # outlist = []
+        # for key in self.index.keys():
+        #     if key == term+"/"+field:
+        #         outlist.append(term)
+        return self.index[term+"/"+term]
 
     def get_term_frequency(self, field: str, term: str, doc_id: str) -> int:
         """Return the frequency of a given term in a document.
@@ -89,12 +92,16 @@ class InvertedIndex(SqliteDict):
             field: Index field.
             term: Term for which to find the count.
             doc_id: Document ID
-
+        
         Returns:
             Term count in a document.
         """
-        # TODO
-        ...
+        termList = self.index[term+"/"+field]
+        i = 0
+        for term in termList:
+            if term.doc_id == doc_id:
+                i += 1
+        return i
 
     def get_terms(self, field: str) -> Set[str]:
         """Returns all unique terms in the index.
@@ -106,7 +113,12 @@ class InvertedIndex(SqliteDict):
             Set of all terms in a given field.
         """
         # TODO
-        ...
+        outlist = []
+        for key in self.index.keys():
+            splittedList = key.split("/")
+            if splittedList[1] == field:
+                outlist.append(splittedList[0])
+        return outlist
 
     def __exit__(self, *exc_info):
         if self.flag == "n":
@@ -139,11 +151,37 @@ def index_collection(
                 print(f"{round(100*(i/num_documents))}% indexed.")
             if i == num_documents:
                 break
-
-            # TODO
-            ...
+            termsbody = preprocess(doc.body)
+            termstitle = preprocess(doc.title)
+            for term in termsbody:   
+                keys = index.keys()
+                exists = term in keys
+                postlist = []
+                if exists:
+                    prelist =  index[term]
+                    prelist.append(Posting(doc.doc_id,""))
+                    postlist = prelist
+                else:
+                    postlist = [Posting(doc.doc_id,"")]
+                index[term+"/"+"body"] = postlist
+            for term in termstitle:   
+                keys = index.keys()
+                exists = term in keys
+                postlist = []
+                if exists:
+                    prelist =  index[term]
+                    prelist.append(Posting(doc.doc_id,""))
+                    postlist = prelist
+                else:
+                    postlist = [Posting(doc.doc_id,"")]
+                index[term+"/"+"title"] = postlist
+            
+            # index.fields[i] = [doc.doc_id,doc.body]
+            # print(terms[2],index[terms[0]])
+            # if i == 100:
+            #     break
 
 
 if __name__ == "__main__":
-    download_dataset("WashingtonPost.v2.tar.gz")
+    # download_dataset("WashingtonPost.v2.tar.gz")
     index_collection()  # total 595037 docs
