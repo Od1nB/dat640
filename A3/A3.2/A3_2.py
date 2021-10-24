@@ -2,6 +2,7 @@ import json
 from typing import Callable, Dict, List, Set, Tuple
 
 import numpy as np
+import math
 from elasticsearch import Elasticsearch
 
 FIELDS = ["title", "body"]
@@ -109,9 +110,23 @@ def extract_query_features(
         Returns:
             Dictionary with keys 'query_length', 'query_sum_idf',
                 'query_max_idf', and 'query_avg_idf'.
-    """
-    # TODO
-    return {}
+    """ 
+    outdict = {"query_length": len(query_terms)}
+    idfs = []
+    for term in query_terms:
+        hits = es.search(index=index, body={"query": {"match": {'body': term}}},_source=False, size=1).get("hits", {}).get("hits", {})
+        doc_id = hits[0]["_id"] if len(hits) > 0 else None
+        if doc_id:
+                tv = es.termvectors(index=index, doc_type="_doc", id=doc_id, fields='body', term_statistics=True).get('term_vectors').get("body")
+                doc_freqq = tv.get("terms").get(term).get("doc_freq")
+                tot_docs = tv.get('field_statistics').get('doc_count')
+                idfs.append(math.log(tot_docs/doc_freqq))
+       
+    outdict["query_sum_idf"] = sum(idfs)
+    outdict['query_avg_idf'] = sum(idfs)/len(idfs)
+    outdict['query_max_idf'] = max(idfs)
+
+    return outdict
 
 
 def extract_doc_features(
@@ -127,8 +142,12 @@ def extract_doc_features(
         Returns:
             Dictionary with keys 'doc_length_title', 'doc_length_body'.
     """
-    # TODO
-    return {}
+    outdict = {}
+    term_freqs_body = get_doc_term_freqs(es, doc_id, "body", index)
+    term_freqs_title = get_doc_term_freqs(es, doc_id, "title", index)
+    outdict["doc_length_body"] = sum(term_freqs_body.values()) if term_freqs_body else 0
+    outdict["doc_length_title"] = sum(term_freqs_title.values()) if term_freqs_title else 0
+    return outdict
 
 
 def extract_query_doc_features(
@@ -151,7 +170,56 @@ def extract_query_doc_features(
                 'max_TF_title', 'max_TF_body', 'avg_TF_title', 'avg_TF_body'. 
     """
     # TODO
-    return {}
+    outdict = {}
+    # for term in query_terms:
+    #     tv = es.termvectors(index=index, doc_type="_doc", id=doc_id, term_statistics=False).get("term_vectors")
+    #     # tv_title, tv_body = tv.get("title"), tv.get("body")
+    #     # print(tv_title)
+    #     # print(tv_body)
+    #     for field in ["body", "title"]:
+    #         tv_field = tv.get(field)
+    #         tf
+    #         if tv_field:
+    #             if term in tv_field.get("terms").keys():
+    #                 doc_occ = tv_field.get("terms").get(term).get("term_freq")
+    #                 outdict["unique_query_terms_in_"+ field] = doc_occ
+    #                 print(term)
+    #         print(tv_field)
+    #         break
+
+    #     break
+        # tv_title, tv_body = tv.get("title"), tv.get("body")
+        # print(tv_title)
+        # print(tv_body)
+    for field in ["body", "title"]:
+        tv = es.termvectors(index=index, doc_type="_doc", id=doc_id, term_statistics=False).get("term_vectors").get(field)
+        tf =  []
+        occs = 0
+        field_len = 0
+        # doc_count = tv.get("field_statistics").get("doc_count")
+        for term in query_terms:
+            # print(term)
+            # print(tv)
+            if tv:
+                if term in tv.get("terms").keys():
+                    doc_occ = tv.get("terms").get(term).get("term_freq")
+                    # outdict["unique_query_terms_in_"+ field] += doc_occ
+                    occs += doc_occ
+                    # tf.append(doc_occ/doc_count)
+                    tf.append(doc_occ)
+                else:
+                    tf.append
+        for terms in tv.get("terms"):
+            print(tv.get("terms"))
+            field_len += tv.get("terms")[terms].get("term_freq")
+        outdict["unique_query_terms_in_"+ field] = occs
+        print(field, tf)
+        outdict["sum_TF_"+field] = sum(tf) if tf else 0
+        outdict["max_TF_"+field] = max(tf) if tf else 0
+        outdict["avg_TF_"+field] = sum(tf)/len(query_terms) if tf else 0
+
+        # break
+    return outdict
 
 
 def extract_features(
@@ -435,8 +503,18 @@ def get_mean_eval_measure(
     return sum_score / len(system_rankings)
 
 
+toy_query = ["t1 t4", "t2", "t5 t7 t2", "t6 t6"]
+
 if __name__ == "__main__":
     index_name = "trec9_index"
     es = Elasticsearch(timeout=120)
     qs = load_qrels("./data/qrels")
+    # extract_query_features(analyze_query(es, toy_query[0], "body"), es, index="toy_index")
+    # extract_doc_features("d1", es, index="toy_index")
+    extract_query_doc_features(
+        analyze_query(es, toy_query[0], "body"),
+        "d2",
+        es,
+        index="toy_index",
+    )
     # index_documents("data/documents.jsonl", es, index_name)
