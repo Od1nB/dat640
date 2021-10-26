@@ -508,13 +508,6 @@ toy_query = ["t1 t4", "t2", "t5 t7 t2", "t6 t6"]
 if __name__ == "__main__":
     index_name = "trec9_index"
     es = Elasticsearch(timeout=120)
-    qs = load_qrels("./data/qrels")
-    # extract_query_features(analyze_query(es, toy_query[0], "body"), es, index="toy_index")
-    # extract_doc_features("d1", es, index="toy_index")
-    extract_query_doc_features(
-        analyze_query(es, toy_query[0], "body"),
-        "d2",
-        es,
-        index="toy_index",
-    )
-    # index_documents("data/documents.jsonl", es, index_name)
+
+    index_documents("data/documents.jsonl", es)
+
