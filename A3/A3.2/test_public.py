@@ -160,6 +160,7 @@ def test_query_document_feature_extraction(es, toy_query):
 
 
 def test_combined_feature_extraction(es, toy_query):
+    """This test is 0.5 points"""
     feature_vect_q0_d1 = module.extract_features(
         module.analyze_query(es, toy_query[0], "body"),
         "d1",
@@ -240,17 +241,18 @@ def test_combined_feature_extraction(es, toy_query):
 
 
 def test_prepare_training_data(training_data):
+    """This test is 1 points"""
     X_train, y_train = training_data
     # Test of preparation of training data.
-    assert len(X_train) == 63763
+    assert len(X_train) == 59997
     assert X_train[0] == pytest.approx(
         [
             2,
-            9.04183708889101,
-            5.404451972764346,
-            4.520918544445505,
-            10,
-            251,
+            9.370371738233722,
+            5.408525298151982,
+            4.685185869116861,
+            11,
+            324,
             0,
             0,
             0,
@@ -268,12 +270,9 @@ def test_prepare_training_data(training_data):
 def test_learning_to_rank_rankings(
     es, trained_ltr_model, train_test_split, queries
 ):
-
-    # Find the predicted rankings of each test query.
-
+    """This test is 1 points"""
     _, test = train_test_split
 
-    # Test of learning-to-rank rankings
     rankings_ltr = module.get_rankings(
         trained_ltr_model, test, queries, es, index=INDEX_NAME, rerank=True
     )
@@ -284,6 +283,7 @@ def test_learning_to_rank_rankings(
 
 
 def test_mean_rr(es, trained_ltr_model, train_test_split, qrels, queries):
+    """This test is 0.5 points"""
     _, test = train_test_split
 
     rankings_first_pass = module.get_rankings(
@@ -295,7 +295,7 @@ def test_mean_rr(es, trained_ltr_model, train_test_split, qrels, queries):
     mrr_first_pass = module.get_mean_eval_measure(
         rankings_first_pass, qrels, module.get_reciprocal_rank
     )
-    assert mrr_first_pass > 0.18
+    assert mrr_first_pass > 0.16
 
     rankings_ltr = module.get_rankings(
         trained_ltr_model, test, queries, es, index=INDEX_NAME, rerank=True
