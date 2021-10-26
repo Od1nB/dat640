@@ -169,28 +169,7 @@ def extract_query_doc_features(
                 'unique_query_terms_in_body', 'sum_TF_title', 'sum_TF_body',
                 'max_TF_title', 'max_TF_body', 'avg_TF_title', 'avg_TF_body'. 
     """
-    # TODO
     outdict = {}
-    # for term in query_terms:
-    #     tv = es.termvectors(index=index, doc_type="_doc", id=doc_id, term_statistics=False).get("term_vectors")
-    #     # tv_title, tv_body = tv.get("title"), tv.get("body")
-    #     # print(tv_title)
-    #     # print(tv_body)
-    #     for field in ["body", "title"]:
-    #         tv_field = tv.get(field)
-    #         tf
-    #         if tv_field:
-    #             if term in tv_field.get("terms").keys():
-    #                 doc_occ = tv_field.get("terms").get(term).get("term_freq")
-    #                 outdict["unique_query_terms_in_"+ field] = doc_occ
-    #                 print(term)
-    #         print(tv_field)
-    #         break
-
-    #     break
-        # tv_title, tv_body = tv.get("title"), tv.get("body")
-        # print(tv_title)
-        # print(tv_body)
     for field in ["body", "title"]:
         tv = es.termvectors(index=index, doc_type="_doc", id=doc_id, term_statistics=False).get("term_vectors").get(field)
         tf =  []
@@ -203,22 +182,17 @@ def extract_query_doc_features(
             if tv:
                 if term in tv.get("terms").keys():
                     doc_occ = tv.get("terms").get(term).get("term_freq")
-                    # outdict["unique_query_terms_in_"+ field] += doc_occ
                     occs += doc_occ
-                    # tf.append(doc_occ/doc_count)
                     tf.append(doc_occ)
                 else:
                     tf.append
         for terms in tv.get("terms"):
-            print(tv.get("terms"))
             field_len += tv.get("terms")[terms].get("term_freq")
         outdict["unique_query_terms_in_"+ field] = occs
-        print(field, tf)
         outdict["sum_TF_"+field] = sum(tf) if tf else 0
         outdict["max_TF_"+field] = max(tf) if tf else 0
         outdict["avg_TF_"+field] = sum(tf)/len(query_terms) if tf else 0
 
-        # break
     return outdict
 
 
