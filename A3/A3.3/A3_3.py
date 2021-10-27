@@ -1,6 +1,7 @@
 import abc
 from collections import UserDict as DictClass
 from typing import Dict, List
+import math
 
 CollectionType = Dict[str, Dict[str, List[str]]]
 
@@ -147,8 +148,29 @@ class SDMScorer(Scorer):
         Returns:
             Score for unigram matches for document with doc ID.
         """
-        # TODO
-        return 0
+        score = 0
+        doc_terms = self.collection.get(doc_id)
+        cqe = 0
+        qfreq = 0
+        tot_terms = 0
+        for qterm in query_terms:
+            for doc_ent in self.collection:
+                d = self.collection.get(doc_ent)
+                for terms in d:
+                    print(qterm, terms)
+                    if (qterm == terms) and (doc_ent == doc_id):
+                        cqe += 1
+                    if qterm == terms:
+                        qfreq += 1
+                    tot_terms += 1
+            print(tot_terms)
+            prelog = ((cqe + self.mu*(qfreq/tot_terms)) / (len(doc_terms)+ self.mu))
+            score += math.log(prelog) if prelog != 0 else 0
+            cqe = 0
+            qfreq = 0
+            tot_terms = 0          
+                        
+        return score
 
     def ordered_bigram_matches(self, query_terms: List[str], doc_id):
         """Returns ordered bigram matches based on smoothed entity language
@@ -245,3 +267,26 @@ class FSDMScorer(Scorer):
         """
         # TODO
         return 0
+collection_x = DocumentCollection(
+    {
+        "d1": {"body": ["t3", "t3", "t3", "t6", "t6"]},
+        "d2": {"body": ["t1", "t2", "t3", "t3", "t6"]},
+        "d3": {"body": ["t3", "t3", "t4", "t5"]},
+        "d4": {"body": ["t4", "t5", "t6", "t6"]},
+        "d5": {"body": ["t1", "t2", "t3", "t5"]},
+    }
+    )
+index_1 = {
+    "body": {
+        "t1": [("d2", 1), ("d5", 1)],
+        "t2": [("d2", 1), ("d5", 1)],
+        "t3": [("d1", 3), ("d2", 2), ("d3", 2), ("d5", 1)],
+        "t4": [("d3", 1), ("d4", 1)],
+        "t5": [("d3", 1), ("d4", 1), ("d5", 1)],
+        "t6": [("d1", 2), ("d2", 1), ("d4", 2)],
+    }
+}
+
+if __name__ == "__main__":
+    sc = SDMScorer(collection_x.get_field_documents("body"), index_1["body"])
+    sc.unigram_matches(["t7", "t3", "t3"], "d1")
