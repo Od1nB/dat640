@@ -184,7 +184,46 @@ class SDMScorer(Scorer):
             Score for ordered bigram matches for document with doc ID.
         """
         # TODO
-        return 0
+        bigrams = []
+        for ind in range(0,len(query_terms)-1):
+            if (ind+1) > len(query_terms):
+                break
+            bigrams.append([query_terms[ind],query_terms[ind+1]])
+        score = 0
+        bfreq = 0
+        bce = 0
+        tot_terms = 0
+        for bigram in bigrams:
+            print(bigram)
+            for doc_ent in self.collection:
+                d = self.collection.get(doc_ent)
+                last = ""
+                for tind  in range(0, len(d)-1):
+                    if tind+1 > len(d):
+                        tot_terms += 1
+                        break
+                    if d[tind] == bigram[0] and d[tind+1] == bigram[1]:
+                        bfreq += 1
+                    if d[tind] == bigram[0] and d[tind+1] == bigram[1] and doc_ent == doc_id:
+                        bce += 1
+                    tot_terms += 1
+            prelog = (bce + self.mu*(bfreq/tot_terms)) / (tot_terms + self.mu)
+            print("bce", bce)
+            print("bfreq", bfreq)
+            print("tot_terms", tot_terms)
+            score += math.log(prelog) if prelog != 0 else 0
+            bfreq = 0
+            bce = 0
+            tot_terms = 0
+        return score
+
+
+        # if d == bigram[0] and terms == bigram[1]:
+        #         bfreq += 1
+        # if last == bigram[0] and terms == bigram[1] and doc_ent == doc_id:
+        #     bce += 1
+        # tot_terms += 1
+        # last = terms
 
     def unordered_bigram_matches(self, query_terms: List[str], doc_id):
         """Returns unordered bigram matches based on smoothed entity language
@@ -289,4 +328,4 @@ index_1 = {
 
 if __name__ == "__main__":
     sc = SDMScorer(collection_x.get_field_documents("body"), index_1["body"])
-    sc.unigram_matches(["t7", "t3", "t3"], "d1")
+    sc.ordered_bigram_matches(["t7", "t3", "t3"], "d1")
