@@ -113,7 +113,7 @@ def test_sdm_unordered_bigram_matches(single_field_scorer):
     """This test is 0.5 points"""
     assert single_field_scorer.unordered_bigram_matches(
         ["t7", "t3", "t3"], "d1"
-    ) == pytest.approx(-1.6491, abs=1e-4)
+    ) == pytest.approx(-0.9811, abs=1e-4)
     assert single_field_scorer.unordered_bigram_matches(["t5", "t1"], "d3") == 0
 
 
@@ -121,10 +121,10 @@ def test_sdm_score_collection(single_field_scorer):
     """This test is 1 points"""
     assert single_field_scorer.score_collection(["t7", "t3", "t3"])[
         "d1"
-    ] == pytest.approx(-1.9152, abs=1e-4)
+    ] == pytest.approx(-1.8818, abs=1e-4)
     assert single_field_scorer.score_collection(["t3", "t5", "t2"])[
         "d4"
-    ] == pytest.approx(-4.6314, abs=1e-4)
+    ] == pytest.approx(-5.2229, abs=1e-4)
 
 
 def test_fsdm_unigram_matches(scorer):
@@ -149,7 +149,7 @@ def test_fsdm_unordered_bigram_matches(scorer):
     """This test is 0.5 points"""
     assert scorer.unordered_bigram_matches(
         ["t1", "t3", "t3"], "d1"
-    ) == pytest.approx(-5.2140, abs=1e-4)
+    ) == pytest.approx(-3.4478, abs=1e-4)
     assert scorer.unordered_bigram_matches(["t5", "t1"], "d3") == pytest.approx(
         -1.8111, abs=1e-4
     )
@@ -161,5 +161,5 @@ def test_fsdm_score_collection(scorer):
         -5.5363, abs=1e-4
     )
     assert scorer.score_collection(["t3", "t5", "t2"])["d2"] == pytest.approx(
-        -5.70988, abs=1e-4
+        -5.4906, abs=1e-4
     )
