@@ -229,7 +229,45 @@ class SDMScorer(Scorer):
             Score for unordered bigram matches for document with doc ID.
         """
         # TODO
-        return 0
+        bigrams = []
+        for ind in range(0,len(query_terms)-1):
+            if (ind+1) > len(query_terms):
+                break   
+            bigrams.append([query_terms[ind], query_terms[ind+1]])
+            bigrams.append([query_terms[-ind], query_terms[-ind+1]])
+        # print(bigrams)
+        # bigrams = set(tuple(bigrams))
+        # bigrams = set(tuple(i) for i in bigrams)
+        # bigrams.append(["3","3"])
+        score = 0
+        bfreq = 0
+        bce = 0
+        tot_terms = 0
+        dd = 0
+        for doc_ent in self.collection:
+            d = self.collection.get(doc_ent)
+            tot_terms += len(d)
+        print("total length of docs: ", dd)
+        for bigram in bigrams:
+            print(bigram)
+            for doc_ent in self.collection:
+                d = self.collection.get(doc_ent)
+                for tind  in range(0, len(d)-1):
+                    if tind+1 > len(d):
+                        break
+                    if d[tind] == bigram[0] and d[tind+1] == bigram[1]:
+                        bfreq += 1
+                    if d[tind] == bigram[0] and d[tind+1] == bigram[1] and doc_ent == doc_id:
+                        bce += 1
+            print("bce", bce)
+            print("bfreq", bfreq)
+            print("tot_terms", tot_terms)
+            prelog = (bce + self.mu*(bfreq/tot_terms)) / (len(self.collection.get(doc_id)) + self.mu)
+            score += math.log(prelog) if prelog != 0 else 0
+            bfreq = 0
+            bce = 0
+        print(bigrams)
+        return score
 
 
 class FSDMScorer(Scorer):
@@ -320,4 +358,4 @@ index_1 = {
 
 if __name__ == "__main__":
     sc = SDMScorer(collection_x.get_field_documents("body"), index_1["body"])
-    sc.ordered_bigram_matches(["t7", "t3", "t3"], "d1")
+    sc.unordered_bigram_matches(["t7", "t3", "t3"], "d1")
