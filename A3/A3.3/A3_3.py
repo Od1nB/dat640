@@ -230,44 +230,91 @@ class SDMScorer(Scorer):
         """
         # TODO
         bigrams = []
-        for ind in range(0,len(query_terms)-1):
-            if (ind+1) > len(query_terms):
-                break   
-            bigrams.append([query_terms[ind], query_terms[ind+1]])
-            bigrams.append([query_terms[-ind], query_terms[-ind+1]])
+        # for ind in range(0,len(query_terms)-1):
+        #     if (ind+1) > len(query_terms):
+        #         break   
+        #     bigrams.append([query_terms[ind], query_terms[ind+1]])
+        #     bigrams.append([query_terms[-ind], query_terms[-ind+1]])
         # print(bigrams)
         # bigrams = set(tuple(bigrams))
         # bigrams = set(tuple(i) for i in bigrams)
         # bigrams.append(["3","3"])
-        score = 0
-        bfreq = 0
-        bce = 0
-        tot_terms = 0
-        dd = 0
-        for doc_ent in self.collection:
-            d = self.collection.get(doc_ent)
-            tot_terms += len(d)
-        print("total length of docs: ", dd)
-        for bigram in bigrams:
-            print(bigram)
-            for doc_ent in self.collection:
-                d = self.collection.get(doc_ent)
-                for tind  in range(0, len(d)-1):
-                    if tind+1 > len(d):
-                        break
-                    if d[tind] == bigram[0] and d[tind+1] == bigram[1]:
-                        bfreq += 1
-                    if d[tind] == bigram[0] and d[tind+1] == bigram[1] and doc_ent == doc_id:
-                        bce += 1
-            print("bce", bce)
-            print("bfreq", bfreq)
-            print("tot_terms", tot_terms)
-            prelog = (bce + self.mu*(bfreq/tot_terms)) / (len(self.collection.get(doc_id)) + self.mu)
-            score += math.log(prelog) if prelog != 0 else 0
-            bfreq = 0
-            bce = 0
-        print(bigrams)
-        return score
+        # score = 0
+        # bfreq = 0
+        # bce = 0
+        # tot_terms = 0
+        # dd = 0
+        # for doc_ent in self.collection:
+        #     d = self.collection.get(doc_ent)
+        #     tot_terms += len(d)
+        # print(bigrams)
+        # for bigram in bigrams:
+        #     print(bigram)
+        #     for doc_ent in self.collection:
+        #         d = self.collection.get(doc_ent)
+        #         b1 = d.count(bigram[0])
+        #         b2 = d.count(bigram[1])
+        #         if b1 == 0 or b2 == 0:
+        #             continue 
+        #         else:
+        #             if b1 % b2 == 0:
+        #                 bfreq += b1
+        #                 if doc_ent == doc_id:
+        #                     bce += b1
+        #             else:
+        #                 bfreq += min(b1, b2)
+        #                 if doc_ent == doc_id:
+        #                     bce += min(b1, b2)
+                
+                # for tind  in range(0, len(d)-1):
+                #     if tind+1 > len(d):
+                #         break
+                #     if d[tind] == bigram[0] and d[tind+1] == bigram[1]:
+                #         bfreq += 1
+                #     if d[tind] == bigram[0] and d[tind+1] == bigram[1] and doc_ent == doc_id:
+                #         bce += 1
+        #     print("bce", bce)
+        #     print("bfreq", bfreq)
+        #     print("tot_terms", tot_terms)
+        #     prelog = (bce + self.mu*(bfreq/tot_terms)) / (len(self.collection.get(doc_id)) + self.mu)
+        #     score += math.log(prelog) if prelog != 0 else 0
+        #     bfreq = 0
+        #     bce = 0
+        # print(bigrams)
+        # return score
+        f_O = 0
+        collection = self.collection[doc_id]
+        print(query_terms)
+        for i in range(0, len(query_terms)-1):
+            # Calculate C_w, frequency where qi and qi+1 occurs in this order
+            C_w = 0
+            le = len(collection)
+            for j in range(0, le-self.window+1):
+                window = collection[j:j+3]
+                if query_terms[i] in window and query_terms[i+1] in window:
+                    C_w += 1
+            # Calculate P_o. frequency where qi and qi+1 occurs in this order / sum document length
+            n_query_collection = 0
+            N = 0
+            for terms in self.collection.values():
+                N += len(terms)
+                for j in range(0, len(terms)-self.window+1):
+                    window = terms[j:j+3]
+                    if query_terms[i] == query_terms[i+1]:
+                        if window.count(query_terms[i]) > 1:
+                            n_query_collection += 1
+                    elif query_terms[i] in window and query_terms[i+1] in window:
+                        n_query_collection += 1
+                print(terms)
+                print(n_query_collection)
+            print(C_w)
+            P_w = n_query_collection/N
+            result = (C_w+self.mu*P_w)/(le+self.mu)
+            if result == 0:
+                continue
+            else:
+                f_O += math.log(result)
+        return f_O
 
 
 class FSDMScorer(Scorer):
@@ -358,4 +405,4 @@ index_1 = {
 
 if __name__ == "__main__":
     sc = SDMScorer(collection_x.get_field_documents("body"), index_1["body"])
-    sc.unordered_bigram_matches(["t7", "t3", "t3"], "d1")
+    print(sc.unordered_bigram_matches(["t7", "t3", "t3"], "d1"))
