@@ -291,7 +291,47 @@ class FSDMScorer(Scorer):
             Score for unigram matches for document with doc ID.
         """
         # TODO
-        return 0
+        score = 0
+        # print(self.fields)
+        # fields = self.fields
+        # print(self.field_weights)
+        print("doc:", doc_id, "query:", query_terms)
+        for field in range(0, len(self.fields)):
+            tot_terms = 0
+            doc_f_len = len(self.collection.get(doc_id).get(self.fields[field]))
+            for docs in self.collection:
+                tot_terms += len(self.collection.get(docs).get(self.fields[field]))
+            # print(tot_terms)
+            print("field: ", self.fields[field])
+            # print(self.collection)
+            # doc_terms = self.collection.get(doc_id).get(fields[field])
+            # print("doc terms variable: ",doc_terms)
+            for qterm in query_terms:
+                # print(qterm)
+                cqe = 0
+                for d_terms in self.collection.get(doc_id).get(self.fields[field]):
+                    if d_terms == qterm:
+                        cqe += 1
+                qfreq = 0
+                for doc_ent in self.collection:
+                    d = self.collection.get(doc_ent).get(self.fields[field])
+                    for terms in d:
+                        if qterm == terms:
+                            qfreq += 1
+                try:
+                    print( "term:", qterm, "cqe:",cqe,"qfreq:", qfreq,"doclen: ",doc_f_len, "totterms: ", tot_terms, "field w", self.field_weights[field])
+                    score += self.field_weights[field] * (((cqe + self.mu*(qfreq/tot_terms)) / (doc_f_len + self.mu)))
+                except  ZeroDivisionError:
+                    continue
+                # print(tot_terms)
+                # print("d val: ",d)
+                # print("tot_terms", tot_terms)
+                # print("doc_terms", len(doc_terms))
+                # score += math.log(prelog) if prelog != 0 else 0
+                cqe = 0
+                qfreq = 0
+            tot_terms = 0 
+        return math.log(score) if score != 0 else 0
 
     def ordered_bigram_matches(self, query_terms: List[str], doc_id):
         """Returns ordered bigram matches based on smoothed entity language
@@ -321,6 +361,7 @@ class FSDMScorer(Scorer):
         """
         # TODO
         return 0
+
 collection_x = DocumentCollection(
     {
         "d1": {"body": ["t3", "t3", "t3", "t6", "t6"]},
@@ -341,6 +382,47 @@ index_1 = {
     }
 }
 
+collection_y = DocumentCollection({
+            "d1": {
+                "title": ["t1"],
+                "body": ["t1", "t2", "t3", "t1", "t3"],
+                "anchors": ["t2", "t2"],
+            },
+            "d2": {
+                "title": ["t4", "t5"],
+                "body": ["t1", "t3", "t4", "t4", "t4", "t5"],
+                "anchors": ["t5", "t3"],
+            },
+            "d3": {
+                "title": ["t1", "t3", "t5"],
+                "body": ["t1", "t1", "t5", "t3", "t5", "t3", "t3"],
+                "anchors": ["t1", "t1", "t5"],
+            },
+        })
+
+index_y = {
+        "title": {
+            "t1": [("d1", 1), ("d3", 1)],
+            "t3": [("d3", 1)],
+            "t4": [("d2", 1)],
+            "t5": [("d2", 1), ("d3", 1)],
+        },
+        "body": {
+            "t1": [("d1", 2), ("d2", 1), ("d3", 2)],
+            "t2": [("d1", 1)],
+            "t3": [("d1", 2), ("d2", 1), ("d3", 3)],
+            "t4": [("d2", 3)],
+            "t5": [("d2", 1), ("d3", 2)],
+        },
+        "anchors": {
+            "t1": [("d3", 2)],
+            "t2": [("d1", 2)],
+            "t3": [("d2", 1)],
+            "t5": [("d2", 1), ("d3", 1)],
+        },
+    }
+
 if __name__ == "__main__":
-    sc = SDMScorer(collection_x.get_field_documents("body"), index_1["body"])
-    print(sc.unordered_bigram_matches(["t7", "t3", "t3"], "d1"))
+    # sc = SDMScorer(collection_x.get_field_documents("body"), index_1["body"])
+    sc2 = FSDMScorer(collection_y, index_y, fields=["body", "title", "anchors"])
+    print("score:",sc2.unigram_matches(["t4", "t1", "t3"], "d1"))
