@@ -230,7 +230,6 @@ class SDMScorer(Scorer):
         """
         f_O = 0
         collection = self.collection[doc_id]
-        print(query_terms)
         for i in range(0, len(query_terms)-1):
             C_w = 0
             le = len(collection)
@@ -238,7 +237,7 @@ class SDMScorer(Scorer):
                 window = collection[j:j+self.window]
                 if query_terms[i] in window and query_terms[i+1] in window:
                     C_w += 1
-            n_query_collection = 0
+            qcol = 0
             N = 0
             for terms in self.collection.values():
                 N += len(terms)
@@ -246,14 +245,17 @@ class SDMScorer(Scorer):
                     window = terms[j:j+self.window]
                     if query_terms[i] == query_terms[i+1]:
                         if window.count(query_terms[i]) > 1:
-                            n_query_collection += 1
+                            qcol += 1
                     elif query_terms[i] in window and query_terms[i+1] in window:
-                        n_query_collection += 1
-            P_w = n_query_collection/N
+                        qcol += 1
+            P_w = qcol/N
             result = (C_w+self.mu*P_w)/(le+self.mu)
             f_O += math.log(result) if result != 0 else 0
         return f_O
 
+def nCr(n,r):
+    f = math.factorial
+    return f(n) / f(r) / f(n-r)
 
 class FSDMScorer(Scorer):
     def __init__(
@@ -382,7 +384,65 @@ class FSDMScorer(Scorer):
             Score for unordered bigram matches for document with doc ID.
         """
         # TODO
-        return 0
+        score = 0
+        for i in range(0, len(query_terms)-1):
+            bscore = 0
+            print(query_terms[i],query_terms[i+1])
+            for field in range(0, len(self.fields)):
+                tot_terms = 0
+                docf = self.collection.get(doc_id).get(self.fields[field])
+                docf_len = len(docf)
+                for docs in self.collection:
+                    tot_terms += len(self.collection.get(docs).get(self.fields[field]))
+                cbig = 0
+                skip = -1
+                for j in range(0, docf_len-self.window+1):
+                    if j < skip:
+                        continue
+                    window = docf[j:j+self.window]
+                    if field == 0:
+                        print("window: ",window)
+                    if query_terms[i] == query_terms[i+1]:
+                            if window.count(query_terms[i]) > 1:
+                                cbig += 1
+                    elif query_terms[i] in window and query_terms[i+1] in window:
+                        q0c = window.count(query_terms[i])
+                        q1c = window.count(query_terms[i+1])
+                        if q0c > 1 or q1c > 1:
+                            cbig += nCr(max(q0c,q1c), min(q0c,q1c))
+                            skip = j+self.window
+                        else:
+                            cbig += 1
+                            skip = j+self.window -1
+                cfbi = 0
+                for doc_ent in self.collection:
+                    d = self.collection.get(doc_ent).get(self.fields[field])
+                    skip = -1
+                    for j in range(0, len(d)-self.window+1):
+                        if j < skip:
+                            continue
+                        window = d[j:j+self.window]
+                        if query_terms[i] == query_terms[i+1]:
+                            if window.count(query_terms[i]) > 1:
+                                cfbi += 1
+                        elif query_terms[i] in window and query_terms[i+1] in window:
+                            q0c = window.count(query_terms[i])
+                            q1c = window.count(query_terms[i+1])
+                            if q0c > 1 or q1c > 1:
+                                cfbi+= int(nCr(max(q0c,q1c), min(q0c,q1c)))
+                                skip = j+self.window
+                            else:
+                                cfbi += 1
+                                skip = j+self.window -1
+
+                try:
+                    print("field:", self.fields[field][:4], "cbig", cbig, "cfbi", cfbi, "docf_len", docf_len, "tot_terms", tot_terms)
+                    bscore += self.field_weights[field] * (((cbig + self.mu*(cfbi/tot_terms)) / (docf_len + self.mu)))
+                except ZeroDivisionError:
+                    continue
+                # tot_terms = 0
+            score += math.log(bscore) if bscore != 0 else 0
+        return score
 
 collection_x = DocumentCollection(
     {
@@ -393,6 +453,7 @@ collection_x = DocumentCollection(
         "d5": {"body": ["t1", "t2", "t3", "t5"]},
     }
     )
+
 index_1 = {
     "body": {
         "t1": [("d2", 1), ("d5", 1)],
@@ -401,8 +462,7 @@ index_1 = {
         "t4": [("d3", 1), ("d4", 1)],
         "t5": [("d3", 1), ("d4", 1), ("d5", 1)],
         "t6": [("d1", 2), ("d2", 1), ("d4", 2)],
-    }
-}
+    }}
 
 collection_y = DocumentCollection({
             "d1": {
@@ -446,5 +506,8 @@ index_y = {
 
 if __name__ == "__main__":
     # sc = SDMScorer(collection_x.get_field_documents("body"), index_1["body"])
+    # sc.unordered_bigram_matches(
+    #     ["t7", "t3", "t3"], "d1")
     sc2 = FSDMScorer(collection_y, index_y, fields=["body", "title", "anchors"])
-    print("score:",sc2.ordered_bigram_matches(["t2", "t1", "t3"], "d1"))
+    # print("score:",sc2.unordered_bigram_matches(["t5", "t1"], "d3"))
+    print("score:",sc2.unordered_bigram_matches(["t1", "t3", "t3"], "d1"))
