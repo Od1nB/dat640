@@ -290,7 +290,6 @@ class FSDMScorer(Scorer):
         Returns:
             Score for unigram matches for document with doc ID.
         """
-        # TODO
         score = 0
         for qterm in query_terms:
             print("term:", qterm)
@@ -332,8 +331,44 @@ class FSDMScorer(Scorer):
             Score for ordered bigram matches for document with doc ID.
         """
 
-        # TODO
-        return 0
+        score = 0
+        bigrams = []
+        for ind in range(0,len(query_terms)-1):
+            if (ind+1) > len(query_terms):
+                break
+            bigrams.append([query_terms[ind],query_terms[ind+1]])
+        for bigram in bigrams:
+            print(bigram)
+            tot_terms = 0
+            bscore = 0
+            for field in range(0, len(self.fields)):
+                docf = self.collection.get(doc_id).get(self.fields[field])
+                docf_len = len(docf)
+                for docs in self.collection:
+                    tot_terms += len(self.collection.get(docs).get(self.fields[field]))
+                cqe = 0
+                for tind in range(0, docf_len-1):
+                    if tind+1 > docf_len:
+                        break
+                    if bigram[0] == docf[tind] and docf[tind+1] == bigram[1]:
+                        cqe += 1
+                cfbi = 0
+                for doc_ent in self.collection:
+                    d = self.collection.get(doc_ent).get(self.fields[field])
+                    for tind in range(0, len(d)-1):
+                        if tind+1 > len(d):
+                            break
+                        if d[tind] == bigram[0] and d[tind+1] == bigram[1]:
+                            cfbi += 1
+                try:
+                    print("field:", self.fields[field], "cqe", cqe, "cfbi", cfbi, "docf_len", docf_len, "tot_terms", tot_terms)
+                    bscore += self.field_weights[field] * (((cqe + self.mu*(cfbi/tot_terms)) / (docf_len + self.mu)))
+                except  ZeroDivisionError:
+                    continue
+                tot_terms = 0
+            score += math.log(bscore) if bscore != 0 else 0
+            bscore = 0
+        return score
 
     def unordered_bigram_matches(self, query_terms: List[str], doc_id):
         """Returns unordered bigram matches based on smoothed entity language
@@ -412,4 +447,4 @@ index_y = {
 if __name__ == "__main__":
     # sc = SDMScorer(collection_x.get_field_documents("body"), index_1["body"])
     sc2 = FSDMScorer(collection_y, index_y, fields=["body", "title", "anchors"])
-    print("score:",sc2.unigram_matches(["t4", "t1", "t3"], "d1"))
+    print("score:",sc2.ordered_bigram_matches(["t2", "t1", "t3"], "d1"))
