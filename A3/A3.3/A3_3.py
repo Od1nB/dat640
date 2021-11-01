@@ -292,22 +292,14 @@ class FSDMScorer(Scorer):
         """
         # TODO
         score = 0
-        # print(self.fields)
-        # fields = self.fields
-        # print(self.field_weights)
-        print("doc:", doc_id, "query:", query_terms)
-        for field in range(0, len(self.fields)):
+        for qterm in query_terms:
+            print("term:", qterm)
             tot_terms = 0
-            doc_f_len = len(self.collection.get(doc_id).get(self.fields[field]))
-            for docs in self.collection:
-                tot_terms += len(self.collection.get(docs).get(self.fields[field]))
-            # print(tot_terms)
-            print("field: ", self.fields[field])
-            # print(self.collection)
-            # doc_terms = self.collection.get(doc_id).get(fields[field])
-            # print("doc terms variable: ",doc_terms)
-            for qterm in query_terms:
-                # print(qterm)
+            qscore = 0
+            for field in range(0, len(self.fields)):
+                doc_f_len = len(self.collection.get(doc_id).get(self.fields[field]))
+                for docs in self.collection:
+                    tot_terms += len(self.collection.get(docs).get(self.fields[field]))
                 cqe = 0
                 for d_terms in self.collection.get(doc_id).get(self.fields[field]):
                     if d_terms == qterm:
@@ -319,19 +311,14 @@ class FSDMScorer(Scorer):
                         if qterm == terms:
                             qfreq += 1
                 try:
-                    print( "term:", qterm, "cqe:",cqe,"qfreq:", qfreq,"doclen: ",doc_f_len, "totterms: ", tot_terms, "field w", self.field_weights[field])
-                    score += self.field_weights[field] * (((cqe + self.mu*(qfreq/tot_terms)) / (doc_f_len + self.mu)))
+                    qscore += self.field_weights[field] * (((cqe + self.mu*(qfreq/tot_terms)) / (doc_f_len + self.mu)))
                 except  ZeroDivisionError:
                     continue
-                # print(tot_terms)
-                # print("d val: ",d)
-                # print("tot_terms", tot_terms)
-                # print("doc_terms", len(doc_terms))
-                # score += math.log(prelog) if prelog != 0 else 0
                 cqe = 0
                 qfreq = 0
-            tot_terms = 0 
-        return math.log(score) if score != 0 else 0
+                tot_terms = 0 
+            score += math.log(qscore) if qscore != 0 else 0
+        return score
 
     def ordered_bigram_matches(self, query_terms: List[str], doc_id):
         """Returns ordered bigram matches based on smoothed entity language
