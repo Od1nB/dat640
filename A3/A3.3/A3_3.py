@@ -383,11 +383,11 @@ class FSDMScorer(Scorer):
         Returns:
             Score for unordered bigram matches for document with doc ID.
         """
-        # TODO
         score = 0
         for i in range(0, len(query_terms)-1):
             bscore = 0
-            print(query_terms[i],query_terms[i+1])
+            t1 = query_terms[i]
+            t2 = query_terms[i+1]
             for field in range(0, len(self.fields)):
                 tot_terms = 0
                 docf = self.collection.get(doc_id).get(self.fields[field])
@@ -395,52 +395,24 @@ class FSDMScorer(Scorer):
                 for docs in self.collection:
                     tot_terms += len(self.collection.get(docs).get(self.fields[field]))
                 cbig = 0
-                skip = -1
-                for j in range(0, docf_len-self.window+1):
-                    if j < skip:
-                        continue
-                    window = docf[j:j+self.window]
-                    if field == 0:
-                        print("window: ",window)
-                    if query_terms[i] == query_terms[i+1]:
-                            if window.count(query_terms[i]) > 1:
-                                cbig += 1
-                    elif query_terms[i] in window and query_terms[i+1] in window:
-                        q0c = window.count(query_terms[i])
-                        q1c = window.count(query_terms[i+1])
-                        if q0c > 1 or q1c > 1:
-                            cbig += nCr(max(q0c,q1c), min(q0c,q1c))
-                            skip = j+self.window
-                        else:
-                            cbig += 1
-                            skip = j+self.window -1
+                for i, term in enumerate(docf):
+                    if term == t1:
+                        cbig += sum([1 if dt == t2 else 0 for dt in docf[i+1:i+self.window]])
+                    if  t1 != t2 and term == t2:
+                        cbig += sum([1 if dt == t1 else 0 for dt in docf[i+1:i+self.window]])
                 cfbi = 0
                 for doc_ent in self.collection:
                     d = self.collection.get(doc_ent).get(self.fields[field])
-                    skip = -1
-                    for j in range(0, len(d)-self.window+1):
-                        if j < skip:
-                            continue
-                        window = d[j:j+self.window]
-                        if query_terms[i] == query_terms[i+1]:
-                            if window.count(query_terms[i]) > 1:
-                                cfbi += 1
-                        elif query_terms[i] in window and query_terms[i+1] in window:
-                            q0c = window.count(query_terms[i])
-                            q1c = window.count(query_terms[i+1])
-                            if q0c > 1 or q1c > 1:
-                                cfbi+= int(nCr(max(q0c,q1c), min(q0c,q1c)))
-                                skip = j+self.window
-                            else:
-                                cfbi += 1
-                                skip = j+self.window -1
+                    for i, term in enumerate(d):
+                        if term == t1:
+                            cfbi += sum([1 if dt == t2 else 0 for dt in d[i+1:i+self.window]])
+                        if  t1 != t2 and term == t2:
+                            cfbi += sum([1 if dt == t1 else 0 for dt in d[i+1:i+self.window]])
 
                 try:
-                    print("field:", self.fields[field][:4], "cbig", cbig, "cfbi", cfbi, "docf_len", docf_len, "tot_terms", tot_terms)
                     bscore += self.field_weights[field] * (((cbig + self.mu*(cfbi/tot_terms)) / (docf_len + self.mu)))
                 except ZeroDivisionError:
                     continue
-                # tot_terms = 0
             score += math.log(bscore) if bscore != 0 else 0
         return score
 
